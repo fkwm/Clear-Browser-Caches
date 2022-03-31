@@ -9,6 +9,7 @@ $SetWhatIf = $false
 # ユーザー名を指定すると他のユーザーに対しては実行されない
 # $null を指定した場合には Cドライブ直下の全てのユーザーが対象
 $ForOneUser = $null
+
 #
 # ====================================================================
 #   システム関係
@@ -199,8 +200,26 @@ class TargetUser
     }
 
     [void]
+    ClearCachesVivaldi() {
+        $app_base_path = Join-Path $this.GetLocalAppDataPath() "Vivaldi\User Data"
+        if($this.AppBasePathExist("Vivaldi", $app_base_path)) {
+            # Clear Default Caches
+            $this.ClearCachesGoogleChromeProfile($app_base_path, "Default")
+            # Clear Other Profile Caches
+            $profiles = Get-ChildItem -Path $app_base_path | Select-Object Name | Where-Object Name -Like "Profile*"
+            foreach ($profile_ in $profiles) {
+                $profile_name = $profile_.Name
+                $this.ClearCachesGoogleChromeProfile($app_base_path, $profile_name)
+            }
+        }
+    }
+
+    [void]
     ClearCachesGoogleChromeProfile([string]$app_base_path, $profile_name) {
         $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\Cache\*"))
+        $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\Code Cache\*"))
+        $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\Service Worker\CacheStorage\*"))
+        $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\Service Worker\ScriptCache\*"))
         $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\Cache2\entries\*"))
         $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\Cookies"))
         $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\Media Cache"))
@@ -236,6 +255,9 @@ class TargetUser
     [void]
     ClearCachesEdgeChroniumProfile([string]$app_base_path, $profile_name) {
         $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\Cache\*"))
+        $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\Code Cache\*"))
+        $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\Service Worker\CacheStorage\*"))
+        $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\Service Worker\ScriptCache\*"))
         $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\Cookies"))
         $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\Cookies-Journal"))
         $this.RemoveItemRecusive((Join-Path $app_base_path "$profile_name\EdgeDWriteFontCache"))
@@ -293,6 +315,7 @@ function clear_user_caches([string]$username, $message) {
     $user.SetName($username)
     $user.ClearCachesInternetExplorer()
     $user.ClearCachesGoogleChrome()
+    $user.ClearCachesVivaldi()
     $user.ClearCachesEdgeChronium()
     $user.DeleteOldDownloads($DayOfUserDownloadFileToKeep)
 }
